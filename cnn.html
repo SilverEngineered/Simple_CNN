@@ -1,0 +1,518 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"></head><body>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
+    
+    
+    
+<div>
+  <div>
+    <div>
+
+<div><div>
+</div>
+<div>
+<div>
+<h1><strong>Exploring a Convoluted Neural Netowrk</strong><a href="#0.1_Exploring-a-Convoluted-Neural-Netowrk">¶</a></h1><p>In
+ this notebook, we will use a simple convoluted neural network to 
+predict digits with around a 97% accuracy using the mnist dataset that 
+contains 60,000 handwritten digits. We accomlish this by using <code>Tensorflow</code>, Google's machine learning API, so start by importing <code>Tensorflow</code> and a few other necessary libraries.</p>
+<p>Contributers: Daniel Silver</p>
+<p>Credit to Dyllan Elliot for the code used to import the mnist data</p>
+
+</div>
+</div>
+</div>
+<div>
+<div>
+<div>In&nbsp;[24]:</div>
+<div>
+    <div>
+<div><pre><span></span><span>import</span> <span>sys</span>
+<span>import</span> <span>tensorflow</span> <span>as</span> <span>tf</span>
+<span>import</span> <span>time</span>
+<span>import</span> <span>numpy</span>
+<span>import</span> <span>matplotlib.pyplot</span> <span>as</span> <span>plt</span>
+<span>import</span> <span>cv2</span>
+<span>import</span> <span>os</span>
+<span>import</span> <span>gzip</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+</div>
+<div><div>
+</div>
+<div>
+<div>
+<h2>Importing Training and Test Data<a href="#0.1_Importing-Training-and-Test-Data">¶</a></h2><p>This example will assume that all of the mnist data is located in the local directory of this program in .gz files.<br>
+The files can be found directly on the mnist website here:<a href="http://yann.lecun.com/exdb/mnist/" target="_blank">http://yann.lecun.com/<wbr>exdb/mnist/</a></p>
+
+</div>
+</div>
+</div>
+<div>
+<div>
+<div>In&nbsp;[28]:</div>
+<div>
+    <div>
+<div><pre><span></span><span># MNIST datasets</span>
+<span>MNIST_TRAIN_IMG</span> <span>=</span> <span>'train-images-idx3-ubyte.gz'</span>
+<span>MNIST_TRAIN_LAB</span> <span>=</span> <span>'train-labels-idx1-ubyte.gz'</span>
+<span>MNIST_TEST_IMG</span> <span>=</span> <span>'t10k-images-idx3-ubyte.gz'</span>
+<span>MNIST_TEST_LAB</span> <span>=</span> <span>'t10k-labels-idx1-ubyte.gz'</span>
+<span>def</span> <span>load_mnist</span><span>(</span><span>path</span><span>,</span> <span>kind</span><span>=</span><span>'train'</span><span>):</span>
+
+
+    <span>"""Load MNIST data from `path`"""</span>
+    <span>labels_path</span> <span>=</span> <span>os</span><span>.</span><span>path</span><span>.</span><span>join</span><span>(</span><span>path</span><span>,</span>
+                               <span>'</span><span>%s</span><span>-labels-idx1-ubyte.gz'</span>
+                               <span>%</span> <span>kind</span><span>)</span>
+    <span>images_path</span> <span>=</span> <span>os</span><span>.</span><span>path</span><span>.</span><span>join</span><span>(</span><span>path</span><span>,</span>
+                               <span>'</span><span>%s</span><span>-images-idx3-ubyte.gz'</span>
+                               <span>%</span> <span>kind</span><span>)</span>
+
+    <span>with</span> <span>gzip</span><span>.</span><span>open</span><span>(</span><span>labels_path</span><span>,</span> <span>'rb'</span><span>)</span> <span>as</span> <span>lbpath</span><span>:</span>
+        <span>labels</span> <span>=</span> <span>numpy</span><span>.</span><span>frombuffer</span><span>(</span><span>lbpath</span><span>.</span><span>read</span><span>()<wbr>,</span> <span>dtype</span><span>=</span><span>numpy</span><span>.</span><span>uint8</span><span>,</span>
+                               <span>offset</span><span>=</span><span>8</span><span>)</span>
+
+    <span>with</span> <span>gzip</span><span>.</span><span>open</span><span>(</span><span>images_path</span><span>,</span> <span>'rb'</span><span>)</span> <span>as</span> <span>imgpath</span><span>:</span>
+        <span>images</span> <span>=</span> <span>numpy</span><span>.</span><span>frombuffer</span><span>(</span><span>imgpath</span><span>.</span><span>read</span><span>(<wbr>),</span> <span>dtype</span><span>=</span><span>numpy</span><span>.</span><span>uint8</span><span>,</span>
+                               <span>offset</span><span>=</span><span>16</span><span>)</span><span>.</span><span>reshape</span><span>(</span><span>len</span><span>(</span><span>labels</span><span>)<wbr>,</span> <span>784</span><span>)</span>
+
+    <span>return</span> <span>images</span><span>,</span> <span>labels</span>
+<span># import nnist training images</span>
+<span>data_path</span><span>=</span><span>""</span>
+<span>X_train</span><span>,</span> <span>Y_train</span> <span>=</span> <span>load_mnist</span><span>(</span><span>data_path</span><span>,</span> <span>kind</span><span>=</span><span>'train'</span><span>)</span>
+<span>X_test</span><span>,</span> <span>Y_test</span> <span>=</span> <span>load_mnist</span><span>(</span><span>data_path</span><span>,</span> <span>kind</span><span>=</span><span>'t10k'</span><span>)</span>
+<span>X_train</span> <span>=</span> <span>X_train</span><span>.</span><span>reshape</span><span>((</span><span>X_train</span><span>.</span><span>shape</span><span><wbr>[</span><span>0</span><span>],</span> <span>28</span><span>,</span> <span>28</span><span>,</span> <span>1</span><span>))</span>
+<span>X_test</span> <span>=</span> <span>X_test</span><span>.</span><span>reshape</span><span>((</span><span>X_test</span><span>.</span><span>shape</span><span>[</span><span>0</span><span><wbr>],</span> <span>28</span><span>,</span> <span>28</span><span>,</span> <span>1</span><span>))</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+</div>
+<div><div>
+</div>
+<div>
+<div>
+<h2>HyperParameters<a href="#0.1_HyperParameters">¶</a></h2><p>The HyperParameters that are used are depicted below.</p>
+
+</div>
+</div>
+</div>
+<div>
+<div>
+<div>In&nbsp;[29]:</div>
+<div>
+    <div>
+<div><pre><span></span><span># Hyperparameters</span>
+<span>n_epochs</span> <span>=</span> <span>10</span>
+<span>learning_rate</span> <span>=</span> <span>.</span><span>0001</span>
+<span>batch_size</span> <span>=</span> <span>50</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+</div>
+<div><div>
+</div>
+<div>
+<div>
+<h2>Parameters<a href="#0.1_Parameters">¶</a></h2><p>The Parameters that
+ are used are depicted below. 
+Note: The amount of nodes in each layer increases as features throughout
+ the convolution become more pronounced from one layer to the next.
+accuracy_frequency is used to conserve computer memory. Decrease this 
+number if you are limited on memory allocation.</p>
+
+</div>
+</div>
+</div>
+<div>
+<div>
+<div>In&nbsp;[6]:</div>
+<div>
+    <div>
+<div><pre><span></span><span># Parameters</span>
+<span>layer1_output_nodes</span> <span>=</span> <span>32</span>
+<span>layer2_output_nodes</span> <span>=</span> <span>64</span>
+<span>layer3_output_nodes</span> <span>=</span> <span>128</span>
+<span>dense_layer1_output_nodes</span> <span>=</span> <span>1024</span>
+<span>dense_layer2_output_nodes</span> <span>=</span> <span>2048</span>
+<span>img_width</span> <span>=</span> <span>28</span>
+<span>img_height</span> <span>=</span> <span>28</span>
+<span>stride</span> <span>=</span> <span>1</span>
+<span>classes</span> <span>=</span> <span>10</span>
+<span>accuracy_frequency</span> <span>=</span> <span>100</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+</div>
+<div><div>
+</div>
+<div>
+<div>
+<h2>Place Holders:<a href="#0.1_Place-Holders:">¶</a></h2><p>The 
+placeholder, x, is used to store the shape for the input features.  In 
+this case, the input features are 28 by 28 pixel values that can on one 
+color value as this is only representing black and white, so the 
+dimensionality of this parameter is 1. Hence the  value <code>1</code> in <code>tf.placeholder('float', [None, 28, 28, 1]</code>.  The y placeholder will only store labels for the actual value of the digits, stored as ints from 0 to 9.</p>
+
+</div>
+</div>
+</div>
+<div>
+<div>
+<div>In&nbsp;[7]:</div>
+<div>
+    <div>
+<div><pre><span></span><span>x</span> <span>=</span> <span>tf</span><span>.</span><span>placeholder</span><span>(</span><span>'float'</span><span>,</span> <span>[</span><span>None</span><span>,</span> <span>28</span><span>,</span> <span>28</span><span>,</span> <span>1</span><span>],</span> <span>name</span><span>=</span><span>"x"</span><span>)</span>
+<span>y</span> <span>=</span> <span>tf</span><span>.</span><span>placeholder</span><span>(</span><span>'int32'</span><span>,</span> <span>[</span><span>None</span><span>],</span> <span>name</span><span>=</span><span>"labels"</span><span>)</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+</div>
+<div><div>
+</div>
+<div>
+<div>
+<h2>Creating the Model Architecture<a href="#0.1_Creating-the-Model-Architecture">¶</a></h2><p>In
+ this example, we have 3 convoluted layers and 3 dense layers.  Note: 
+There does not need to be the same amount of layers as dense layers.</p>
+
+</div>
+</div>
+</div>
+<div><div>
+</div>
+<div>
+<div>
+<h3>The Convoluted Layers<a href="#0.1_The-Convoluted-Layers">¶</a></h3><p>We create each convoluted layer  one at a time using our  <code>create_new_conv_layer(input, num_filters, filter_shape, pool_shape, stride, name)</code> function.   For each layer we will pass in the<strong> previous layer</strong> for input.  The first input to create the first layer will be <code>x</code> because <code>x</code>, once fed, will be storing our feature data. We use a filter of shape <code>[5,5]</code> and a pool of shape <code>[2,2]</code>, with a stride of size<code>1</code>.</p>
+
+</div>
+</div>
+</div>
+<div>
+<div>
+<div>In&nbsp;[31]:</div>
+<div>
+    <div>
+<div><pre><span></span><span># creates a convoluted layer for use in a convoluted network</span>
+<span># Args:</span>
+<span>#   - input: the input data for the layer, use previous layer if there is one</span>
+<span>#   - num_filters: the number fo features feeding into the layer</span>
+<span>#   - filter_shape: a 2 element array where the first represents width of filer, and second represents height. ex. [5,5] a 5 x 5 filter</span>
+<span>#   - pool_shape: a 2 element array where the first represents width of the pool, and second represents height. ex. [2,2] a 2 x 2 pool</span>
+<span>#   - pool_stride: the size of the stride for the filer</span>
+<span># Returns:</span>
+<span>#   - a new convoluted layer</span>
+
+
+<span>def</span> <span>create_new_conv_layer</span><span>(</span><span>input</span><span>,</span> <span>num_filters</span><span>,</span> <span>filter_shape</span><span>,</span> <span>pool_shape</span><span>,</span> <span>stride</span><span>,</span> <span>name</span><span>):</span>
+    <span>out_layer</span> <span>=</span> <span>tf</span><span>.</span><span>layers</span><span>.</span><span>conv2d</span><span>(</span><span>input</span><span>,</span> <span>filters</span><span>=</span><span>num_filters</span><span>,</span> <span>kernel_size</span><span>=</span><span>[</span><span>filter_shape</span><span>[</span><span>0</span><span>],</span> <span>filter_shape</span><span>[</span><span>1</span><span>]],</span>
+                                 <span>strides</span><span>=</span><span>[</span><span>stride</span><span>,</span> <span>stride</span><span>],</span> <span>padding</span><span>=</span><span>'SAME'</span><span>,</span> <span>activation</span><span>=</span><span>tf</span><span>.</span><span>nn</span><span>.</span><span>relu</span><span>)</span>
+    <span>pool_size</span> <span>=</span> <span>[</span><span>pool_shape</span><span>[</span><span>0</span><span>],</span> <span>pool_shape</span><span>[</span><span>1</span><span>]]</span>
+    <span>strides</span> <span>=</span> <span>[</span><span>2</span><span>,</span> <span>2</span><span>]</span>
+    <span>out_layer</span> <span>=</span> <span>tf</span><span>.</span><span>layers</span><span>.</span><span>max_pooling2d</span><span>(</span>
+        <span>out_layer</span><span>,</span> <span>pool_size</span><span>=</span><span>pool_size</span><span>,</span> <span>strides</span><span>=</span><span>strides</span><span>,</span> <span>padding</span><span>=</span><span>'SAME'</span><span>)</span>
+    <span>return</span> <span>out_layer</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+</div>
+<div>
+<div>
+<div>In&nbsp;[32]:</div>
+<div>
+    <div>
+<div><pre><span></span><span>layer1</span> <span>=</span> <span>create_new_conv_layer</span><span>(</span>
+    <span>x</span><span>,</span> <span>layer1_output_nodes</span><span>,</span> <span>[</span><span>5</span><span>,</span> <span>5</span><span>],</span> <span>[</span><span>2</span><span>,</span> <span>2</span><span>],</span> <span>stride</span><span>,</span> <span>"layer1"</span><span>)</span>
+<span>layer2</span> <span>=</span> <span>create_new_conv_layer</span><span>(</span>
+    <span>layer1</span><span>,</span> <span>layer2_output_nodes</span><span>,</span> <span>[</span><span>5</span><span>,</span> <span>5</span><span>],</span> <span>[</span><span>2</span><span>,</span> <span>2</span><span>],</span> <span>stride</span><span>,</span> <span>"layer2"</span><span>)</span>
+<span>layer3</span> <span>=</span> <span>create_new_conv_layer</span><span>(</span>
+    <span>layer2</span><span>,</span> <span>layer3_output_nodes</span><span>,</span> <span>[</span><span>5</span><span>,</span> <span>5</span><span>],</span> <span>[</span><span>2</span><span>,</span> <span>2</span><span>],</span> <span>stride</span><span>,</span> <span>"layer2"</span><span>)</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+</div>
+<div><div>
+</div>
+<div>
+<div>
+<h3>The Dense Layers<a href="#0.1_The-Dense-Layers">¶</a></h3><p>We again create our desnse layers  one at a time, this time using our  <code>create_dense_layer(input, units, namespace)</code> function.   For each layer we will pass in our<strong> previous layer</strong>
+ for input. Deep layers must take in a vectorized tensor, so me must 
+flatten our last convulted layer.  Our final dense layer must output 
+with a number of nodes equal to the number of classes to be able to 
+classify our images as 1 of 10 digits.  We then use the <strong>softmax</strong> function to normalize our outputs.<strong> Softmax</strong> is equivalent to <code>tf.exp(logits) / tf.reduce_sum(tf.exp(logits), axis)</code>.</p>
+
+</div>
+</div>
+</div>
+<div>
+<div>
+<div>In&nbsp;[33]:</div>
+<div>
+    <div>
+<div><pre><span></span><span># creates a dense layer for a convuluted netowrk</span>
+<span># Args:</span>
+<span>#   - input: the vectorized input tensor</span>
+<span>#   - units: the number of output nodes from this layer</span>
+<span>#   - namespace: the namespace for this layer</span>
+<span># Returns:</span>
+<span>#   - a new dense layer</span>
+
+
+<span>def</span> <span>create_dense_layer</span><span>(</span><span>input</span><span>,</span> <span>units</span><span>,</span> <span>namespace</span><span>):</span>
+    <span>with</span> <span>tf</span><span>.</span><span>name_scope</span><span>(</span><span>namespace</span><span>):</span>
+        <span>return</span> <span>tf</span><span>.</span><span>layers</span><span>.</span><span>dense</span><span>(</span><span>input</span><span>,</span> <span>units</span><span>)</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+</div>
+<div>
+<div>
+<div>In&nbsp;[34]:</div>
+<div>
+    <div>
+<div><pre><span></span><span>flattened</span> <span>=</span> <span>tf</span><span>.</span><span>contrib</span><span>.</span><span>layers</span><span>.</span><span>flatten</span><span>(</span><span>laye<wbr>r3</span><span>)</span>
+<span>dense_layer1</span> <span>=</span> <span>create_dense_layer</span><span>(</span>
+    <span>flattened</span><span>,</span> <span>dense_layer1_output_nodes</span><span>,</span> <span>"fc1"</span><span>)</span>
+<span>dense_layer2</span> <span>=</span> <span>create_dense_layer</span><span>(</span>
+    <span>dense_layer1</span><span>,</span> <span>dense_layer2_output_nodes</span><span>,</span> <span>"fc2"</span><span>)</span>
+<span>dense_layer3</span> <span>=</span> <span>create_dense_layer</span><span>(</span>
+    <span>dense_layer2</span><span>,</span> <span>classes</span><span>,</span> <span>"fc2"</span><span>)</span>
+<span>y_</span> <span>=</span> <span>tf</span><span>.</span><span>nn</span><span>.</span><span>softmax</span><span>(</span><span>dense_layer3</span><span>)</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+</div>
+<div><div>
+</div>
+<div>
+<div>
+<h2>Cost<a href="#0.1_Cost">¶</a></h2><p>We use cross entroy to calculate our loss function which is denoted as <code>cost</code> in this example.</p>
+
+</div>
+</div>
+</div>
+<div>
+<div>
+<div>In&nbsp;[35]:</div>
+<div>
+    <div>
+<div><pre><span></span><span>cost</span> <span>=</span> <span>tf</span><span>.</span><span>reduce_mean</span><span>(</span><span>tf</span><span>.</span><span>nn</span><span>.</span><span>softmax_<wbr>cross_entropy_with_logits_v2</span><span>(</span>
+        <span>logits</span><span>=</span><span>dense_layer3</span><span>,</span> <span>labels</span><span>=</span><span>tf</span><span>.</span><span>one_hot</span><span>(</span><span>y</span><span>,</span> <span>classes</span><span>)))</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+</div>
+<div><div>
+</div>
+<div>
+<div>
+<h2>Training<a href="#0.1_Training">¶</a></h2><p>We use an AdamOptimizer
+ to train our model. Note: There are many other valid optimizers that 
+can be used here. I just found AdamOptimizer to work very well for this 
+architecture.</p>
+
+</div>
+</div>
+</div>
+<div>
+<div>
+<div>In&nbsp;[36]:</div>
+<div>
+    <div>
+<div><pre><span></span>    <span>optimizer</span> <span>=</span> <span>tf</span><span>.</span><span>train</span><span>.</span><span>AdamOptimizer</span><span>(</span><span>learnin<wbr>g_rate</span><span>)</span><span>.</span><span>minimize</span><span>(</span><span>cost</span><span>)</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+</div>
+<div><div>
+</div>
+<div>
+<div>
+<h2>Testing<a href="#0.1_Testing">¶</a></h2><p>We allocate a graph node 
+named correct to calculate for each data point whether of not our guess 
+was correct.  We then create a graph node named accuracy to calculate 
+the accuracy of our model after any given epoch.</p>
+
+</div>
+</div>
+</div>
+<div>
+<div>
+<div>In&nbsp;[37]:</div>
+<div>
+    <div>
+<div><pre><span></span><span>correct</span> <span>=</span> <span>tf</span><span>.</span><span>equal</span><span>(</span><span>tf</span><span>.</span><span>argmax</span><span>(</span><span>tf</span><span>.</span><span>one_hot</span><span>(</span><span><wbr>tf</span><span>.</span><span>cast</span><span>(</span><span>y</span><span>,</span> <span>'int64'</span><span>),</span> <span>classes</span><span>),</span> <span>1</span><span>),</span>
+                   <span>tf</span><span>.</span><span>argmax</span><span>(</span><span>tf</span><span>.</span><span>cast</span><span>(</span><span>y_</span><span>,</span> <span>'int64'</span><span>),</span> <span>1</span><span>))</span>
+<span>accuracy</span> <span>=</span> <span>tf</span><span>.</span><span>reduce_mean</span><span>(</span><span>tf</span><span>.</span><span>cast</span><span>(</span><span>correct</span><span><wbr>,</span> <span>tf</span><span>.</span><span>float32</span><span>))</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+</div>
+<div><div>
+</div>
+<div>
+<div>
+<h2>Creating and Running the Session<a href="#0.1_Creating-and-Running-the-Session">¶</a></h2><p>We
+ initialize a session and run through a certain amount of batches per 
+epoch (The amount depends on the size of the batch as every epoch will 
+be testing every data point once).  We then run all of our training data
+ in batches, using our optimizer to utilize its<strong> Adam Optimization</strong>
+ algorithym to employ backpropogation to let our model fix itself to 
+learn from the data by adjusting weights and biases. Afterwards, we will
+ run our test data against our model and test our <strong>accuracy</strong>.  This will occur for every <strong>epoch</strong> until the program finishes running.</p>
+
+</div>
+</div>
+</div>
+<div>
+<div>
+<div>In&nbsp;[40]:</div>
+<div>
+    <div>
+<div><pre><span></span><span># gets data for a batch from the entire dataset</span>
+<span># Args:</span>
+<span>#   - batch_size: the size of the batch to fetch</span>
+<span>#   - count: the current count within the epoch to continue from for this batch</span>
+<span>#   - X_train: the training data</span>
+<span>#   - Y_train: the training labels</span>
+<span># Returns:</span>
+<span>#   - mini-batch of x's and y's of size batch_size</span>
+
+<span>def</span> <span>get_mini_batch</span><span>(</span><span>batch_size</span><span>,</span> <span>count</span><span>,</span> <span>X_train</span><span>,</span> <span>Y_train</span><span>,</span> <span>Test</span><span>=</span><span>False</span><span>):</span>
+    <span>batch_x</span> <span>=</span> <span>[]</span>
+    <span>batch_y</span> <span>=</span> <span>[]</span>
+    <span>if</span> <span>Test</span> <span>and</span> <span>(</span><span>batch_size</span> <span>*</span> <span>count</span> <span>+</span> <span>batch_size</span><span>)</span> <span>==</span> <span>len</span><span>(</span><span>X_train</span><span>):</span>
+        <span>for</span> <span>i</span> <span>in</span> <span>range</span><span>(</span><span>batch_size</span> <span>-</span> <span>1</span><span>):</span>
+            <span>batch_x</span><span>.</span><span>append</span><span>(</span><span>X_train</span><span>[</span><span>count</span> <span>*</span> <span>batch_size</span> <span>+</span> <span>i</span><span>])</span>
+            <span>batch_y</span><span>.</span><span>append</span><span>(</span><span>Y_train</span><span>[</span><span>count</span> <span>*</span> <span>batch_size</span> <span>+</span> <span>i</span><span>])</span>
+            <span>return</span> <span>batch_x</span><span>,</span> <span>batch_y</span>
+    <span>for</span> <span>i</span> <span>in</span> <span>range</span><span>(</span><span>batch_size</span><span>):</span>
+        <span>batch_x</span><span>.</span><span>append</span><span>(</span><span>X_train</span><span>[</span><span>count</span> <span>*</span> <span>batch_size</span> <span>+</span> <span>i</span><span>])</span>
+        <span>batch_y</span><span>.</span><span>append</span><span>(</span><span>Y_train</span><span>[</span><span>count</span> <span>*</span> <span>batch_size</span> <span>+</span> <span>i</span><span>])</span>
+    <span>return</span> <span>batch_x</span><span>,</span> <span>batch_y</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+</div>
+<div>
+<div>
+<div>In&nbsp;[&nbsp;]:</div>
+<div>
+    <div>
+<div><pre><span></span><span>with</span> <span>tf</span><span>.</span><span>Session</span><span>()</span> <span>as</span> <span>sess</span><span>:</span>
+        <span>sess</span><span>.</span><span>run</span><span>(</span><span>tf</span><span>.</span><span>global_variables_<wbr>initializer</span><span>())</span>
+        <span>for</span> <span>epoch</span> <span>in</span> <span>range</span><span>(</span><span>n_epochs</span><span>):</span>
+            <span>current_accuracy</span> <span>=</span> <span>0</span>
+            <span>accuracy_calculations</span> <span>=</span> <span>0</span>
+            <span>epoch_loss</span> <span>=</span> <span>0</span>
+            <span>accpoints</span> <span>=</span> <span>[]</span>
+            <span>accuracy_points</span> <span>=</span> <span>[]</span>
+            <span>iterations_per_epoch</span> <span>=</span> <span>int</span><span>(</span><span>len</span><span>(</span><span>X_train</span><span>)</span> <span>/</span> <span>batch_size</span><span>)</span>
+            <span>for</span> <span>j</span> <span>in</span> <span>range</span><span>(</span><span>iterations_per_epoch</span><span>):</span>
+                <span>batch_x</span><span>,</span> <span>batch_y</span> <span>=</span> <span>get_mini_batch</span><span>(</span>
+                    <span>batch_size</span><span>,</span> <span>j</span><span>,</span> <span>X_train</span><span>,</span> <span>Y_train</span><span>)</span>
+                <span>feed</span> <span>=</span> <span>{</span><span>x</span><span>:</span> <span>batch_x</span><span>,</span> <span>y</span><span>:</span> <span>batch_y</span><span>}</span>
+                <span>_</span><span>,</span> <span>c</span> <span>=</span> <span>sess</span><span>.</span><span>run</span><span>([</span><span>optimizer</span><span>,</span> <span>cost</span><span>],</span> <span>feed_dict</span><span>=</span><span>{</span>
+                                <span>x</span><span>:</span> <span>batch_x</span><span>,</span> <span>y</span><span>:</span> <span>batch_y</span><span>})</span>
+                <span>epoch_loss</span> <span>+=</span> <span>c</span>
+            <span>for</span> <span>i</span> <span>in</span> <span>range</span><span>(</span><span>accuracy_frequency</span><span>):</span>
+                <span>X_test_batch</span><span>,</span> <span>Y_test_batch</span> <span>=</span> <span>get_mini_batch</span><span>(</span>
+                    <span>int</span><span>(</span><span>len</span><span>(</span><span>X_test</span><span>)</span> <span>/</span> <span>accuracy_frequency</span><span>),</span> <span>i</span><span>,</span> <span>X_test</span><span>,</span> <span>Y_test</span><span>,</span> <span>True</span><span>)</span>
+                <span>a</span> <span>=</span> <span>sess</span><span>.</span><span>run</span><span>(</span><span>accuracy</span><span>,</span> <span>feed_dict</span><span>=</span><span>{</span>
+                             <span>x</span><span>:</span> <span>X_test_batch</span><span>,</span> <span>y</span><span>:</span> <span>Y_test_batch</span><span>})</span>
+                <span>accuracy_points</span><span>.</span><span>append</span><span>(</span><span>a</span><span>)</span>
+            <span>print</span><span>(</span><span>"Total Accuracy:  "</span> <span>+</span> <span>str</span><span>(</span><span>numpy</span><span>.</span><span>mean</span><span>(</span><span>accuracy_points</span><span><wbr>)))</span>
+            <span>accpoints</span><span>.</span><span>append</span><span>(</span><span>numpy</span><span>.</span><span>mean</span><span>(</span><span>ac<wbr>curacy_points</span><span>))</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+</div>
+<div><div>
+</div>
+<div>
+<div>
+<h2>Calculating Accuracy<a href="#0.1_Calculating-Accuracy">¶</a></h2>
+<pre><code>for i in range(accuracy_frequency):
+                X_test_batch, Y_test_batch = nnUtils.get_mini_batch(
+                    int(len(X_test) / accuracy_frequency), i, X_test, Y_test, True)
+                a = sess.run(accuracy, feed_dict={x: X_test_batch, y: Y_test_batch})
+                accuracy_points.append(a)
+</code></pre>
+<p>Due to the fact that the test data is so large (10,000 images), it 
+can be a burden on your computer to store it all in memory at once. By 
+splitting in up into chunks of 1/accuracy_frequency size of the data 
+set, we can achieve the same accuracy calculation with lower memory 
+burden.</p>
+
+</div>
+</div>
+</div>
+    </div>
+  </div>
+</div>
+
+ 
+
+
+
+</body></html>
